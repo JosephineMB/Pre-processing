@@ -1,0 +1,141 @@
+---
+title: "Analysis of da0c, 3 deccembre 2021"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(rjson)
+library("writexl")
+library("lubridate")
+library(manipulate)
+library(sp) # for polygons
+library(TeachingDemos) # for zoomplot
+library(fpc) # for dbscan clustering
+library(dbscan) # for KNN dbscan
+library(raster) # for distance calculation
+library(readxl)
+library(ggplot2)
+library(gganimate)
+library(gifski) # for the gif
+library(tictoc) # for computation time
+library(DT)
+```
+
+# The data
+
+```{r,comment=NA, echo=FALSE}
+`da0c_3dec21` <- read.csv2("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/data/da0c-3dec21.csv")
+
+tagId <- unique(`da0c_3dec21`$tag)
+
+data0 <- `da0c_3dec21` 
+
+data0$Y <- NULL
+data0$m<- NULL
+data0$d <- NULL
+data0$H <- NULL
+data0$S<- NULL
+data0$num <- NULL
+
+
+cat("Number of observaions:", dim(data0)[1], "\n")
+
+na_data <- which(is.na(data0$x)==TRUE) 
+
+cat("Number of NA:", length(na_data), "\n")
+
+cat("Time of first point: ", data0$record_timestamp[1], "\n")
+
+cat("Time of last point:", data0$date[dim(data0)[1]], "\n")
+
+```
+
+# Whole data analysis
+
+```{r comment=NA}
+source("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Functions/continuous_SubTraj.R")
+time_interval <- c(data0$date[1], data0$date[dim(data0)[1]]) 
+res <- continuous_SubTraj(data0, time_interval)
+
+```
+## Discontinuity in the whole data set
+
+```{r comment=NA}
+DT::datatable(
+  res$disc_instant,
+  height = 200,
+  options = list(scrollX = TRUE)
+) %>%
+  formatRound(columns=c('timediff', 'dist_parcourue', 'Vitesse'), digits=3)
+```
+
+
+## Continuous sub-trajectories table
+
+```{r comment=NA}
+DT::datatable(
+  res$sub_traj,
+  height = 200,
+  options = list(scrollX = TRUE)
+)%>%
+  formatRound(columns=c('duration', 'distance', 'time_gap'), digits=3)
+
+```
+
+# Data from 7h to 8h 
+
+```{r comment=NA}
+source("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Functions/continuous_SubTraj.R")
+
+time_interval <- c("2021-12-03 07:00:00", "2021-12-03 08:00:00" ) 
+res <- continuous_SubTraj(data0, time_interval)
+```
+
+## Discontinuity table
+
+```{r comment=NA}
+# knitr::kable(res$disc_instant)
+
+DT::datatable(
+  res$disc_instant,
+  height = 200,
+  options = list(scrollX = TRUE)
+) %>%
+  formatRound(columns=c('timediff', 'dist_parcourue', 'Vitesse'), digits=3)
+
+```
+
+## Continuous sub-trajectories table
+
+```{r comment=NA}
+DT::datatable(
+  res$sub_traj,
+  height = 200,
+  options = list(scrollX = TRUE)
+)%>%
+  formatRound(columns=c('duration', 'distance', 'time_gap'), digits=3)
+
+```
+
+## Clustering in order to stabelizing
+
+```{r}
+source("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Functions/dbscan_cluster.R")
+
+corr.data <- list(length(res$cont_sub_traj)) 
+for (l in 1:length(res$cont_sub_traj)) {
+  l <- 2
+  traj <- res$cont_sub_traj[[l]]
+  corr.data[[l]] <- ifelse(leng_sub_traj[l]<=5, traj, dbscan_cluster(traj)) 
+}
+
+
+```
+

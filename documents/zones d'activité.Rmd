@@ -1,0 +1,111 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Polygons : Rooms in emergency service
+```{r}
+library(readxl)
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Wall_lignes_firminy.xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X` <- as.numeric(Wall_lignes_firminy$`Start X`)/100
+Wall_lignes_firminy$`Start Y` <- as.numeric(Wall_lignes_firminy$`Start Y`)/100
+Wall_lignes_firminy$`End X` <- as.numeric(Wall_lignes_firminy$`End X`)/100
+Wall_lignes_firminy$`End Y` <- as.numeric(Wall_lignes_firminy$`End Y`)/100
+
+plot(c(-120, 20), c(-120, 20), type="n", main =("with outliers") )
+segments(Wall_lignes_firminy$`Start X`, Wall_lignes_firminy$`Start Y`, Wall_lignes_firminy$`End X`, Wall_lignes_firminy$`End Y`)
+# library(TeachingDemos)
+# zoomplot(xlim=c(-40, 0), ylim=c(-45, 0))
+
+  # ----- polygons
+  # all_polygons <- read_excel("Polygon_nodes.xlsx")
+  all_polygons <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Firminy installation/Polygon_nodes_v3.xlsx")
+
+  polyg.list <- unique(all_polygons$Label)
+  n.polyg <- length(polyg.list)
+  
+  polyg <- list()
+  polyg_activity <- c()
+  for (i in 1:n.polyg) {
+    polyg[[i]] <- all_polygons[which(all_polygons$Label==polyg.list[i]),]
+    polyg_activity[i] <- all_polygons[which(all_polygons$Label==polyg.list[i])[1],2]
+    polygon(polyg[[i]]$xcoord, polyg[[i]]$ycoord, border ="green")
+  }
+  names(polyg) <- polyg.list
+  polyg.list
+  polyg_activity <- unlist(polyg_activity)
+```
+
+
+Activity types
+
+```{r}
+library(readxl)
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Wall_lignes_firminy.xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X` <- as.numeric(Wall_lignes_firminy$`Start X`)/100
+Wall_lignes_firminy$`Start Y` <- as.numeric(Wall_lignes_firminy$`Start Y`)/100
+Wall_lignes_firminy$`End X` <- as.numeric(Wall_lignes_firminy$`End X`)/100
+Wall_lignes_firminy$`End Y` <- as.numeric(Wall_lignes_firminy$`End Y`)/100
+
+plot(c(-120, 20), c(-120, 20), type="n", main =("Activity type zone") )
+segments(Wall_lignes_firminy$`Start X`, Wall_lignes_firminy$`Start Y`, Wall_lignes_firminy$`End X`, Wall_lignes_firminy$`End Y`)
+
+
+  Zone.list <- unique(all_polygons$Acitivity)
+  n.zones <- length(Zone.list)
+  
+  zones_which_polyg <- list()
+  for(l in 1:n.zones){
+    zones_which_polyg[[l]] <- which(polyg_activity==Zone.list[[l]])
+    for (i in zones_which_polyg[[l]]) {
+    polygon(polyg[[i]]$xcoord, polyg[[i]]$ycoord, border = l)
+    }
+  }
+  legend("topleft", legend = Zone.list, col = 1:n.zones, lty = 1)
+
+```
+```{r}
+library(readxl)
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Wall_lignes_firminy.xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X` <- as.numeric(Wall_lignes_firminy$`Start X`)/100
+Wall_lignes_firminy$`Start Y` <- as.numeric(Wall_lignes_firminy$`Start Y`)/100
+Wall_lignes_firminy$`End X` <- as.numeric(Wall_lignes_firminy$`End X`)/100
+Wall_lignes_firminy$`End Y` <- as.numeric(Wall_lignes_firminy$`End Y`)/100
+
+plot(c(-120, 20), c(-120, 20), type="n", main =("activity types") )
+segments(Wall_lignes_firminy$`Start X`, Wall_lignes_firminy$`Start Y`, Wall_lignes_firminy$`End X`, Wall_lignes_firminy$`End Y`)
+# library(TeachingDemos)
+# zoomplot(xlim=c(-40, 0), ylim=c(-45, 0))
+
+  # ----- polygons
+  # all_polygons <- read_excel("Polygon_nodes.xlsx")
+  all_zones <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Activity zones.xlsx")
+  
+
+  zone.list <- unique(all_zones$Activity)
+  n.zones <- length(zone.list)
+  n.polyg.zone <- length(unique(all_zones$id))
+
+  d<- vector("numeric", dim(all_zones)[1] )
+  d[which(all_zones$Activity==zone.list[1])] <- 2
+  d[which(all_zones$Activity==zone.list[2])] <- 3
+  d[which(all_zones$Activity==zone.list[3])] <- 4
+
+  all_zones <- cbind(all_zones,d)
+  
+  zones <- list()
+  for (i in 1:n.polyg.zone) {
+    zones[[i]] <- all_zones[which(all_zones$id==i),]
+    polygon(zones[[i]]$xcoord, zones[[i]]$ycoord, border =zones[[i]]$d[1])
+  }
+  legend("topleft", legend = zone.list, col = 2:4, lty=1)
+  
+
+```

@@ -1,0 +1,180 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(rjson)
+library("writexl")
+library("lubridate")
+library(manipulate)
+library(sp) # for polygons
+library(TeachingDemos) # for zoomplot
+library(fpc) # for dbscan clustering
+library(dbscan) # for KNN dbscan
+library(raster) # for distance calculation
+library(readxl)
+library(ggplot2)
+library(gganimate)
+library(gifski) # for the gif
+library(tictoc) # for computation time
+```
+
+# Data 
+
+```{r }
+`2b9c_28nov` <- read.csv2("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/data/2b9c-28nov21.csv")
+
+tagId <- unique(`2b9c_28nov`$tag)
+
+data <- `2b9c_28nov` 
+x <- intersect(which(data$date> "2021-11-28 15:00:00"), which(data$date< "2021-11-28 16:00:00"))
+data<- data[x,]
+
+```
+
+
+# Analysis
+
+```{r}
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Walls_ligne3_Origine(-15,-30).xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X'` <- as.numeric(Wall_lignes_firminy$`Start X'`)/100
+Wall_lignes_firminy$`Start Y'` <- as.numeric(Wall_lignes_firminy$`Start Y'`)/100
+Wall_lignes_firminy$`End X'` <- as.numeric(Wall_lignes_firminy$`End X'`)/100
+Wall_lignes_firminy$`End Y'` <- as.numeric(Wall_lignes_firminy$`End Y'`)/100
+
+# plot(c(-120, 20), c(-120, 20), type="n", main =("with outliers") )
+# segments(Wall_lignes_firminy$`Start X'`, Wall_lignes_firminy$`Start Y'`, Wall_lignes_firminy$`End X'`, Wall_lignes_firminy$`End Y'`)
+
+walls <- Wall_lignes_firminy[,7:12]
+colnames(walls) <- c("endx", "endy", "endz", "x", "y", "z")
+
+plan <- ggplot()+ 
+  geom_segment(data = walls,  mapping = aes(x = x, y = y, xend=endx, yend=endy))+
+  xlim(-80, 80)+
+  ylim(-80,80)
+
+
+data.point <- plan +
+  geom_point(data = data, aes(x, y), size=0.1, color="red")
+print(data.point)
+
+# write_xlsx(data, '?.xlsx')
+
+# x1 <- intersect(which(data$date> "2021-11-29 00:36:00"), which(data$date< "2021-11-29 00:40:00"))
+# data1<- data[x1,]
+# points <- plan+
+#   geom_point(data = data, aes(x, y), size=0.1, color="red")+
+#   # fFor animating the plot
+#   labs(title = 'da0c: {frame_time}', x = 'X', y = 'Y') +
+#   transition_time(as_datetime(record_timestamp)) +
+#   ease_aes('linear')
+# 
+# animate(points)
+# anim_save('~/Devellyn/traitement_data position/Firminy installation/Firminy installation/data/da0c-29non21_00h_01h.gif')
+```
+# Data clustering 
+
+```{r, echo=FALSE}
+
+source("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Functions/dbscan_cluster.R")
+xy <- data
+corr.data <- dbscan_cluster(data)
+
+
+
+
+# MA
+library(RcppRoll)
+N <- 15
+
+x_smoothed <- roll_mean(xy[,2],n = N)
+y_smoothed <- roll_mean(xy[,3], n=N)
+
+MA1.brut <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="red") +
+  ggtitle("Smoothing raw data")
+print(MA1.brut)
+
+x_smoothed <- roll_mean(corr.data[,2],n = N)
+y_smoothed  <- roll_mean(corr.data[,3], n=N)
+
+MA1.corr <- plan+ 
+  geom_point(aes(x_smoothed, y_smoothed), size=0.1, color="green") +
+    ggtitle("Smoothing stabilized data")
+print(MA1.corr)
+
+```
+
+# Polygons (Rooms)
+
+```{r}
+library(readxl)
+Wall_lignes_firminy <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Walls_ligne3_Origine(-15,-30).xlsx")
+Wall_lignes_firminy <- as.data.frame(Wall_lignes_firminy)
+Wall_lignes_firminy$`Start X'` <- as.numeric(Wall_lignes_firminy$`Start X'`)/100
+Wall_lignes_firminy$`Start Y'` <- as.numeric(Wall_lignes_firminy$`Start Y'`)/100
+Wall_lignes_firminy$`End X'` <- as.numeric(Wall_lignes_firminy$`End X'`)/100
+Wall_lignes_firminy$`End Y'` <- as.numeric(Wall_lignes_firminy$`End Y'`)/100
+
+
+plot(c(-80, 80), c(-80, 80), type="n", main =("Rooms") )
+segments(Wall_lignes_firminy$`Start X'`, Wall_lignes_firminy$`Start Y'`, Wall_lignes_firminy$`End X'`, Wall_lignes_firminy$`End Y'`)
+
+# library(TeachingDemos)
+# zoomplot(xlim=c(-40, 0), ylim=c(-45, 0))
+# points(data$measuredX,data$measuredY,col=3, cex=0.1, pch=20)
+   
+  # ----- polygons
+  # all_polygons <- read_excel("Polygon_nodes.xlsx")
+  all_polygons <- read_excel("~/Devellyn/traitement_data position/Firminy installation/Firminy installation/Polygon_nodes_Origine(-15,-30).xlsx")
+
+  polyg.list <- unique(all_polygons$Label)
+  n.polyg <- length(polyg.list)
+  
+  polyg <- list()
+  for (i in 1:n.polyg) {
+    polyg[[i]] <- all_polygons[which(all_polygons$Label==polyg.list[i]),]
+    polygon(polyg[[i]]$xcoord, polyg[[i]]$ycoord, border ="green")
+  }
+  names(polyg) <- polyg.list
+  polyg.list
+  points(corr.data$x,corr.data$y, pch=20, col=2, cex=0.1)
+  
+```
+
+
+
+```{r}
+source("~/Devellyn/traitement_data position/Firminy installation/points.in.room.R")
+
+room.analysis <- points.in.room(data = data, polyg = polyg)
+data1 <- room.analysis$data
+
+# write_xlsx(data1, "mat2b9c_28nov21_15h-16h.xlsx")
+
+indx.int.point <- room.analysis$indx.in.point
+  
+plot(c(-80, 80), c(-80, 80), type="n", main =("In and out points") )
+segments(Wall_lignes_firminy$`Start X'`, Wall_lignes_firminy$`Start Y'`, Wall_lignes_firminy$`End X'`, Wall_lignes_firminy$`End Y'`)
+points(data1$x, data1$y, col=3, cex=0.1, pch=20)
+points(data1$x[-indx.int.point ], data1$y[-indx.int.point ], col=2, cex=0.1, pch=20)
+
+source("~/Devellyn/traitement_data position/Firminy installation/Analyse de trajectoires/Functions/traj_analysis.R")
+traj <- traj_analysis(data1)
+View(traj$traj)
+
+  # legend("topleft", legend = c("Points in", "Points out"), col=c(3,4), pch = 20)
+  # 
+  # itin <- points.itinerary(data, polyg)
+  # itinerary <- itin$itinerary
+
+```
+
+
+
